@@ -566,7 +566,56 @@
                         
                         // Intentar obtener más información si está disponible
                         if (device.adData) {
-                            deviceInfo.adData = device.adData;
+                            // Convertir datos de advertising a hexadecimal
+                            const adDataHex = {};
+                            for (const [key, value] of Object.entries(device.adData)) {
+                                // Si el valor es un ArrayBuffer o similar, convertirlo a hexadecimal
+                                if (value instanceof ArrayBuffer || 
+                                    value instanceof Uint8Array || 
+                                    value instanceof DataView) {
+                                    
+                                    const bytes = new Uint8Array(value instanceof ArrayBuffer ? value : value.buffer);
+                                    const hex = Array.from(bytes)
+                                        .map(b => b.toString(16).padStart(2, '0'))
+                                        .join(':');
+                                    
+                                    adDataHex[key] = hex;
+                                } else if (typeof value === 'string' && isBase64(value)) {
+                                    // Intentar convertir cadenas base64 a hexadecimal
+                                    try {
+                                        const decoded = atob(value);
+                                        const bytes = new Uint8Array(decoded.length);
+                                        for (let i = 0; i < decoded.length; i++) {
+                                            bytes[i] = decoded.charCodeAt(i);
+                                        }
+                                        const hex = Array.from(bytes)
+                                            .map(b => b.toString(16).padStart(2, '0'))
+                                            .join(':');
+                                        adDataHex[key] = hex;
+                                    } catch (e) {
+                                        // Si falla la conversión, mantener el valor original
+                                        adDataHex[key] = value;
+                                    }
+                                } else {
+                                    adDataHex[key] = value;
+                                }
+                            }
+                            
+                            deviceInfo.adData = device.adData; // Original
+                            deviceInfo.adDataHex = adDataHex;  // Versión hexadecimal
+                        }
+                        
+                        // Intentar obtener datos del fabricante si están disponibles
+                        if (device.manufacturerData) {
+                            const manufacturerDataHex = {};
+                            for (const [key, value] of device.manufacturerData.entries()) {
+                                const bytes = new Uint8Array(value.buffer);
+                                const hex = Array.from(bytes)
+                                    .map(b => b.toString(16).padStart(2, '0'))
+                                    .join(':');
+                                manufacturerDataHex[key] = hex;
+                            }
+                            deviceInfo.manufacturerData = manufacturerDataHex;
                         }
                         
                         // Registrar toda la información disponible para diagnóstico
@@ -586,6 +635,15 @@
                 } catch (error) {
                     console.error("Error general con Bluetooth:", error);
                     bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar Bluetooth"}`;
+                }
+            }
+            
+            // Función para detectar si una cadena está en formato base64
+            function isBase64(str) {
+                try {
+                    return btoa(atob(str)) === str;
+                } catch (err) {
+                    return false;
                 }
             }
             
@@ -646,8 +704,13 @@
                     // Formateamos los datos disponibles
                     let detailsHtml = '';
                     
-                    // Mostrar todos los datos disponibles
-                    if (device.adData) {
+                    // Mostrar datos de advertising en formato hexadecimal
+                    if (device.adDataHex) {
+                        detailsHtml += '<div><strong>Advertisement Data (HEX):</strong></div>';
+                        for (const [key, value] of Object.entries(device.adDataHex)) {
+                            detailsHtml += `<div>${key}: ${value}</div>`;
+                        }
+                    } else if (device.adData) {
                         detailsHtml += '<div><strong>Advertisement Data:</strong></div>';
                         for (const [key, value] of Object.entries(device.adData)) {
                             detailsHtml += `<div>${key}: ${value}</div>`;
@@ -662,15 +725,11 @@
                         });
                     }
                     
-                    // Si hay datos del fabricante, mostrarlos de forma legible
+                    // Si hay datos del fabricante, mostrarlos de forma legible en hexadecimal
                     if (device.manufacturerData) {
-                        detailsHtml += '<div><strong>Datos del fabricante:</strong></div>';
-                        for (const [key, value] of device.manufacturerData.entries()) {
-                            // Convertir los datos binarios a formato hexadecimal
-                            const hexData = Array.from(new Uint8Array(value.buffer))
-                                .map(b => b.toString(16).padStart(2, '0'))
-                                .join(':');
-                            detailsHtml += `<div>ID: ${key}, Datos: ${hexData}</div>`;
+                        detailsHtml += '<div><strong>Datos del fabricante (HEX):</strong></div>';
+                        for (const [key, value] of Object.entries(device.manufacturerData)) {
+                            detailsHtml += `<div>ID: ${key}, Datos: ${value}</div>`;
                         }
                     }
                     
