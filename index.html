@@ -545,44 +545,32 @@
                 updateBleDevicesList();
                 
                 try {
-                    // Configurar opciones de descubrimiento para obtener más información
+                    // Configurar opciones de descubrimiento
                     const options = {
                         acceptAllDevices: true,
-                        // Intentar obtener más información si está disponible
-                        filters: [],
-                        optionalServices: []
+                        // Intentar obtener todos los servicios disponibles
+                        optionalServices: ['generic_access']
                     };
                     
                     navigator.bluetooth.requestDevice(options)
                     .then(device => {
                         bleStatusDiv.textContent = "Dispositivo detectado";
                         
-                        // Intentar extraer MAC del nombre si está en formato "Nombre (MAC)"
-                        let macAddress = "No disponible";
-                        let displayName = device.name || "Dispositivo sin nombre";
+                        console.log("Dispositivo detectado:", device);
                         
-                        // Comprobar si el nombre tiene formato "Nombre (XX:XX:XX:XX:XX:XX)"
-                        const macRegex = /\(([0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2})\)/i;
-                        if (device.name && macRegex.test(device.name)) {
-                            const match = device.name.match(macRegex);
-                            if (match && match[1]) {
-                                macAddress = match[1];
-                                // Extraer solo el nombre sin la MAC
-                                displayName = device.name.replace(macRegex, "").trim();
-                            }
-                        }
-                        
-                        console.log("Dispositivo detectado:", device.name);
-                        console.log("ID del dispositivo:", device.id);
-                        console.log("Información completa:", device);
-                        
-                        // Guardar toda la información que podamos encontrar
+                        // Guardar toda la información disponible del dispositivo
                         const deviceInfo = {
                             id: device.id || "Desconocido",
-                            name: displayName,
-                            mac: macAddress,
-                            fullName: device.name
+                            name: device.name || "Dispositivo sin nombre"
                         };
+                        
+                        // Intentar obtener más información si está disponible
+                        if (device.adData) {
+                            deviceInfo.adData = device.adData;
+                        }
+                        
+                        // Registrar toda la información disponible para diagnóstico
+                        console.log("Información completa del dispositivo:", deviceInfo);
                         
                         bleDevices.push(deviceInfo);
                         updateBleDevicesList();
@@ -616,13 +604,7 @@
                     
                     // Actualizar resumen
                     summaryBleDeviceSpan.textContent = selectedBleDevice.name || 'Dispositivo sin nombre';
-                    
-                    // Mostrar MAC si está disponible, de lo contrario mostrar ID
-                    if (selectedBleDevice.mac && selectedBleDevice.mac !== "No disponible") {
-                        summaryBleIdSpan.textContent = selectedBleDevice.mac;
-                    } else {
-                        summaryBleIdSpan.textContent = selectedBleDevice.id || 'Desconocido';
-                    }
+                    summaryBleIdSpan.textContent = selectedBleDevice.id || 'Desconocido';
                     
                     updateSummary();
                 }
@@ -644,32 +626,65 @@
                     const deviceItem = document.createElement('div');
                     deviceItem.className = 'device-item';
                     
+                    // Nombre del dispositivo
                     const deviceName = document.createElement('div');
                     deviceName.className = 'device-name';
                     deviceName.textContent = device.name || 'Dispositivo sin nombre';
                     
+                    // ID del dispositivo
                     const deviceId = document.createElement('div');
                     deviceId.className = 'device-id';
+                    deviceId.textContent = `ID: ${device.id || 'Desconocido'}`;
                     
-                    // Mostrar MAC si está disponible, de lo contrario mostrar ID
-                    if (device.mac && device.mac !== "No disponible") {
-                        deviceId.textContent = `MAC: ${device.mac}`;
-                    } else {
-                        deviceId.textContent = `ID: ${device.id || 'Desconocido'}`;
+                    // Agregar datos completos
+                    const deviceDetails = document.createElement('div');
+                    deviceDetails.className = 'device-details';
+                    deviceDetails.style.fontSize = '0.9em';
+                    deviceDetails.style.marginTop = '5px';
+                    deviceDetails.style.color = '#555';
+                    
+                    // Formateamos los datos disponibles
+                    let detailsHtml = '';
+                    
+                    // Mostrar todos los datos disponibles
+                    if (device.adData) {
+                        detailsHtml += '<div><strong>Advertisement Data:</strong></div>';
+                        for (const [key, value] of Object.entries(device.adData)) {
+                            detailsHtml += `<div>${key}: ${value}</div>`;
+                        }
                     }
                     
-                    // Mostrar el nombre completo si es diferente del nombre mostrado
-                    if (device.fullName && device.fullName !== device.name) {
-                        const deviceFullName = document.createElement('div');
-                        deviceFullName.className = 'device-full-name';
-                        deviceFullName.style.fontSize = '0.8em';
-                        deviceFullName.style.color = '#666';
-                        deviceFullName.textContent = `Nombre completo: ${device.fullName}`;
-                        deviceItem.appendChild(deviceFullName);
+                    // Si hay servicios disponibles, mostrarlos
+                    if (device.services && device.services.length > 0) {
+                        detailsHtml += '<div><strong>Servicios disponibles:</strong></div>';
+                        device.services.forEach(service => {
+                            detailsHtml += `<div>${service}</div>`;
+                        });
                     }
                     
+                    // Si hay datos del fabricante, mostrarlos de forma legible
+                    if (device.manufacturerData) {
+                        detailsHtml += '<div><strong>Datos del fabricante:</strong></div>';
+                        for (const [key, value] of device.manufacturerData.entries()) {
+                            // Convertir los datos binarios a formato hexadecimal
+                            const hexData = Array.from(new Uint8Array(value.buffer))
+                                .map(b => b.toString(16).padStart(2, '0'))
+                                .join(':');
+                            detailsHtml += `<div>ID: ${key}, Datos: ${hexData}</div>`;
+                        }
+                    }
+                    
+                    // Si no hay datos adicionales, mostrar un mensaje
+                    if (!detailsHtml) {
+                        detailsHtml = '<div>No hay datos adicionales disponibles</div>';
+                    }
+                    
+                    deviceDetails.innerHTML = detailsHtml;
+                    
+                    // Ensamblar el elemento completo
                     deviceItem.appendChild(deviceName);
                     deviceItem.appendChild(deviceId);
+                    deviceItem.appendChild(deviceDetails);
                     
                     // Agregar evento para seleccionar dispositivo
                     deviceItem.addEventListener('click', function() {
@@ -695,7 +710,7 @@
                 const data = {
                     barcode: currentBarcode,
                     bleDevice: {
-                        mac: selectedBleDevice.mac || selectedBleDevice.id,
+                        id: selectedBleDevice.id,
                         name: selectedBleDevice.name
                     },
                     timestamp: new Date().getTime()
