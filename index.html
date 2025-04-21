@@ -673,6 +673,75 @@
                     summaryBleIdSpan.textContent = selectedBleDevice.id || 'Desconocido';
                     
                     updateSummary();
+                    
+                    // Crear un mensaje con toda la información disponible
+                    let alertMessage = "INFORMACIÓN COMPLETA DEL DISPOSITIVO BLE\n\n";
+                    
+                    // Información básica
+                    alertMessage += `Nombre: ${selectedBleDevice.name || 'Sin nombre'}\n`;
+                    alertMessage += `ID: ${selectedBleDevice.id || 'Desconocido'}\n\n`;
+                    
+                    // Información de advertising
+                    if (selectedBleDevice.scanRecordHex) {
+                        alertMessage += `Scan Record (HEX): ${selectedBleDevice.scanRecordHex}\n`;
+                    }
+                    
+                    if (selectedBleDevice.scanRecord) {
+                        if (selectedBleDevice.scanRecord.rssi) {
+                            alertMessage += `RSSI: ${selectedBleDevice.scanRecord.rssi} dBm\n`;
+                        }
+                        if (selectedBleDevice.scanRecord.txPower) {
+                            alertMessage += `TX Power: ${selectedBleDevice.scanRecord.txPower} dBm\n`;
+                        }
+                        alertMessage += '\n';
+                    }
+                    
+                    // ID en hexadecimal
+                    if (selectedBleDevice.idHex) {
+                        alertMessage += `ID (HEX): ${selectedBleDevice.idHex}\n\n`;
+                    }
+                    
+                    // Datos de advertising
+                    if (selectedBleDevice.adDataHex) {
+                        alertMessage += "Advertisement Data (HEX):\n";
+                        for (const [key, value] of Object.entries(selectedBleDevice.adDataHex)) {
+                            alertMessage += `${key}: ${value}\n`;
+                        }
+                        alertMessage += '\n';
+                    } else if (selectedBleDevice.adData) {
+                        alertMessage += "Advertisement Data:\n";
+                        for (const [key, value] of Object.entries(selectedBleDevice.adData)) {
+                            alertMessage += `${key}: ${value}\n`;
+                        }
+                        alertMessage += '\n';
+                    }
+                    
+                    // Datos del fabricante
+                    if (selectedBleDevice.manufacturerData) {
+                        alertMessage += "Datos del fabricante (HEX):\n";
+                        for (const [key, value] of Object.entries(selectedBleDevice.manufacturerData)) {
+                            alertMessage += `ID: ${key}, Datos: ${value}\n`;
+                        }
+                        alertMessage += '\n';
+                    }
+                    
+                    // Servicios disponibles
+                    if (selectedBleDevice.services && selectedBleDevice.services.length > 0) {
+                        alertMessage += "Servicios disponibles:\n";
+                        selectedBleDevice.services.forEach(service => {
+                            alertMessage += `${service}\n`;
+                        });
+                        alertMessage += '\n';
+                    }
+                    
+                    // Información completa del dispositivo
+                    alertMessage += "Información completa disponible en la consola del navegador";
+                    
+                    // Mostrar alerta con toda la información
+                    alert(alertMessage);
+                    
+                    // Mostrar también en consola para tener acceso completo a los datos
+                    console.log("Dispositivo seleccionado - Información completa:", selectedBleDevice);
                 }
             }
             
