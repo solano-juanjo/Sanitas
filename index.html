@@ -545,106 +545,114 @@
                 updateBleDevicesList();
                 
                 try {
-                    // Configurar opciones de descubrimiento
-                    const options = {
-                        acceptAllDevices: true,
-                        // Intentar obtener todos los servicios disponibles
-                        optionalServices: ['generic_access']
-                    };
-                    
-                    navigator.bluetooth.requestDevice(options)
-                    .then(device => {
-                        bleStatusDiv.textContent = "Dispositivo detectado";
+                    // Intentar usar el método requestLEScan si está disponible (Chrome 79+)
+                    if (navigator.bluetooth.requestLEScan) {
+                        console.log("Usando requestLEScan para obtener advertising data");
                         
-                        console.log("Dispositivo detectado:", device);
-                        
-                        // Guardar toda la información disponible del dispositivo
-                        const deviceInfo = {
-                            id: device.id || "Desconocido",
-                            name: device.name || "Dispositivo sin nombre"
-                        };
-                        
-                        // Intentar obtener más información si está disponible
-                        if (device.adData) {
-                            // Convertir datos de advertising a hexadecimal
-                            const adDataHex = {};
-                            for (const [key, value] of Object.entries(device.adData)) {
-                                // Si el valor es un ArrayBuffer o similar, convertirlo a hexadecimal
-                                if (value instanceof ArrayBuffer || 
-                                    value instanceof Uint8Array || 
-                                    value instanceof DataView) {
-                                    
-                                    const bytes = new Uint8Array(value instanceof ArrayBuffer ? value : value.buffer);
-                                    const hex = Array.from(bytes)
+                        navigator.bluetooth.requestLEScan({
+                            acceptAllAdvertisements: true,
+                            keepRepeatedDevices: true
+                        }).then(scan => {
+                            console.log("Escaneo BLE iniciado:", scan);
+                            bleStatusDiv.textContent = "Escaneando dispositivos BLE...";
+                            
+                            // Escuchar eventos de advertising
+                            navigator.bluetooth.addEventListener('advertisementreceived', event => {
+                                console.log('Advertisement received:', event);
+                                
+                                // Extraer y mostrar los datos de advertising
+                                const device = event.device;
+                                const deviceInfo = {
+                                    id: device.id || "Desconocido",
+                                    name: device.name || "Dispositivo sin nombre",
+                                    scanRecord: {
+                                        raw: new Uint8Array(event.manufacturerData.entries().next().value?.[1].buffer || []),
+                                        rssi: event.rssi,
+                                        txPower: event.txPower,
+                                    }
+                                };
+                                
+                                // Convertir los datos a hexadecimal
+                                if (deviceInfo.scanRecord && deviceInfo.scanRecord.raw) {
+                                    deviceInfo.scanRecordHex = Array.from(deviceInfo.scanRecord.raw)
                                         .map(b => b.toString(16).padStart(2, '0'))
                                         .join(':');
-                                    
-                                    adDataHex[key] = hex;
-                                } else if (typeof value === 'string' && isBase64(value)) {
-                                    // Intentar convertir cadenas base64 a hexadecimal
-                                    try {
-                                        const decoded = atob(value);
-                                        const bytes = new Uint8Array(decoded.length);
-                                        for (let i = 0; i < decoded.length; i++) {
-                                            bytes[i] = decoded.charCodeAt(i);
-                                        }
-                                        const hex = Array.from(bytes)
-                                            .map(b => b.toString(16).padStart(2, '0'))
-                                            .join(':');
-                                        adDataHex[key] = hex;
-                                    } catch (e) {
-                                        // Si falla la conversión, mantener el valor original
-                                        adDataHex[key] = value;
-                                    }
-                                } else {
-                                    adDataHex[key] = value;
                                 }
-                            }
+                                
+                                // Agregar a la lista de dispositivos
+                                bleDevices.push(deviceInfo);
+                                updateBleDevicesList();
+                            });
                             
-                            deviceInfo.adData = device.adData; // Original
-                            deviceInfo.adDataHex = adDataHex;  // Versión hexadecimal
-                        }
-                        
-                        // Intentar obtener datos del fabricante si están disponibles
-                        if (device.manufacturerData) {
-                            const manufacturerDataHex = {};
-                            for (const [key, value] of device.manufacturerData.entries()) {
-                                const bytes = new Uint8Array(value.buffer);
-                                const hex = Array.from(bytes)
-                                    .map(b => b.toString(16).padStart(2, '0'))
-                                    .join(':');
-                                manufacturerDataHex[key] = hex;
-                            }
-                            deviceInfo.manufacturerData = manufacturerDataHex;
-                        }
-                        
-                        // Registrar toda la información disponible para diagnóstico
-                        console.log("Información completa del dispositivo:", deviceInfo);
-                        
-                        bleDevices.push(deviceInfo);
-                        updateBleDevicesList();
-                        
-                        // Actualizar el contador de dispositivos
-                        bleResultDiv.textContent = `${bleDevices.length} dispositivo${bleDevices.length !== 1 ? 's' : ''} encontrado${bleDevices.length !== 1 ? 's' : ''}`;
-                    })
-                    .catch(error => {
-                        console.error('Error al buscar dispositivos BLE:', error);
-                        bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar la búsqueda de dispositivos Bluetooth"}`;
-                    });
-                    
+                            // Detener el escaneo después de 10 segundos
+                            setTimeout(() => {
+                                scan.stop();
+                                bleStatusDiv.textContent = "Escaneo completado";
+                            }, 10000);
+                        }).catch(error => {
+                            console.error("Error con requestLEScan:", error);
+                            useFallbackScan();
+                        });
+                    } else {
+                        console.log("requestLEScan no disponible, usando método alternativo");
+                        useFallbackScan();
+                    }
                 } catch (error) {
                     console.error("Error general con Bluetooth:", error);
                     bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar Bluetooth"}`;
                 }
             }
             
-            // Función para detectar si una cadena está en formato base64
-            function isBase64(str) {
-                try {
-                    return btoa(atob(str)) === str;
-                } catch (err) {
-                    return false;
-                }
+            // Método alternativo de escaneo BLE
+            function useFallbackScan() {
+                // Configurar opciones de descubrimiento básicas
+                const options = {
+                    acceptAllDevices: true,
+                };
+                
+                navigator.bluetooth.requestDevice(options)
+                .then(device => {
+                    bleStatusDiv.textContent = "Dispositivo detectado";
+                    
+                    console.log("Dispositivo detectado con método alternativo:", device);
+                    console.log("Propiedades disponibles:", Object.getOwnPropertyNames(device));
+                    
+                    // Mostrar todas las propiedades para diagnóstico
+                    const deviceProperties = {};
+                    for (const prop in device) {
+                        try {
+                            deviceProperties[prop] = device[prop];
+                        } catch (e) {
+                            deviceProperties[prop] = "Error al acceder: " + e.message;
+                        }
+                    }
+                    console.log("Todas las propiedades:", deviceProperties);
+                    
+                    // Intentar acceder a toda la información disponible
+                    const deviceInfo = {
+                        id: device.id || "Desconocido",
+                        name: device.name || "Dispositivo sin nombre",
+                        rawDevice: device
+                    };
+                    
+                    // Crear un dato hexadecimal de ejemplo para mostrar
+                    const deviceIdBytes = new TextEncoder().encode(device.id);
+                    deviceInfo.idHex = Array.from(deviceIdBytes)
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join(':');
+                    
+                    console.log("Información del dispositivo:", deviceInfo);
+                    
+                    bleDevices.push(deviceInfo);
+                    updateBleDevicesList();
+                    
+                    // Actualizar el contador de dispositivos
+                    bleResultDiv.textContent = `${bleDevices.length} dispositivo${bleDevices.length !== 1 ? 's' : ''} encontrado${bleDevices.length !== 1 ? 's' : ''}`;
+                })
+                .catch(error => {
+                    console.error('Error al buscar dispositivos BLE:', error);
+                    bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar la búsqueda de dispositivos Bluetooth"}`;
+                });
             }
             
             // Función para seleccionar un dispositivo BLE
@@ -710,22 +718,30 @@
                         for (const [key, value] of Object.entries(device.adDataHex)) {
                             detailsHtml += `<div>${key}: ${value}</div>`;
                         }
-                    } else if (device.adData) {
-                        detailsHtml += '<div><strong>Advertisement Data:</strong></div>';
-                        for (const [key, value] of Object.entries(device.adData)) {
-                            detailsHtml += `<div>${key}: ${value}</div>`;
+                    }
+                    
+                    // Mostrar datos de escaneo si están disponibles
+                    if (device.scanRecordHex) {
+                        detailsHtml += '<div><strong>Scan Record (HEX):</strong></div>';
+                        detailsHtml += `<div>${device.scanRecordHex}</div>`;
+                        
+                        if (device.scanRecord) {
+                            if (device.scanRecord.rssi) {
+                                detailsHtml += `<div>RSSI: ${device.scanRecord.rssi} dBm</div>`;
+                            }
+                            if (device.scanRecord.txPower) {
+                                detailsHtml += `<div>TX Power: ${device.scanRecord.txPower} dBm</div>`;
+                            }
                         }
                     }
                     
-                    // Si hay servicios disponibles, mostrarlos
-                    if (device.services && device.services.length > 0) {
-                        detailsHtml += '<div><strong>Servicios disponibles:</strong></div>';
-                        device.services.forEach(service => {
-                            detailsHtml += `<div>${service}</div>`;
-                        });
+                    // ID en hexadecimal (solo para demostración)
+                    if (device.idHex) {
+                        detailsHtml += '<div><strong>ID en Hexadecimal:</strong></div>';
+                        detailsHtml += `<div>${device.idHex}</div>`;
                     }
                     
-                    // Si hay datos del fabricante, mostrarlos de forma legible en hexadecimal
+                    // Datos del fabricante
                     if (device.manufacturerData) {
                         detailsHtml += '<div><strong>Datos del fabricante (HEX):</strong></div>';
                         for (const [key, value] of Object.entries(device.manufacturerData)) {
@@ -733,8 +749,19 @@
                         }
                     }
                     
+                    // Mostrar información completa del dispositivo si está disponible
+                    detailsHtml += '<div><strong>Información del dispositivo:</strong></div>';
+                    
+                    // Añadir mensaje informativo
+                    detailsHtml += '<div>Nota: La Web Bluetooth API tiene limitaciones y puede no proporcionar todos los datos de advertising.</div>';
+                    
+                    // Si hay información, mostrarla
+                    if (device.rawDevice) {
+                        detailsHtml += '<div>Tipo de dispositivo: ' + (typeof device.rawDevice) + '</div>';
+                    }
+                    
                     // Si no hay datos adicionales, mostrar un mensaje
-                    if (!detailsHtml) {
+                    if (detailsHtml === '') {
                         detailsHtml = '<div>No hay datos adicionales disponibles</div>';
                     }
                     
