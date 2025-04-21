@@ -3,27 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Códigos de Barras</title>
+    <title>Escáner Multifunción</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Escáner de Códigos de Barras</h1>
+    <h1>Escáner Multifunción</h1>
     <div class="container">
-        <div id="scanner-container">
-            <!-- La cámara aparecerá aquí -->
-        </div>
-        <div class="status" id="status">Esperando acceso a la cámara...</div>
-        <button id="start-button">Iniciar Escáner</button>
-        <button id="stop-button" disabled>Detener Escáner</button>
-        <div id="result">
-            El código escaneado aparecerá aquí
+        <div class="tabs">
+            <button id="barcode-tab" class="tab-button active">Códigos de barras</button>
+            <button id="ble-tab" class="tab-button">Dispositivos BLE</button>
         </div>
         
-        <div class="history">
-            <h2>Historial de escaneos</h2>
-            <div class="history-items" id="history-list">
-                <div class="history-item">Aún no hay códigos escaneados</div>
+        <div id="barcode-section" class="section active">
+            <div id="scanner-container">
+                <!-- La cámara aparecerá aquí -->
+            </div>
+            <div class="status" id="barcode-status">Esperando acceso a la cámara...</div>
+            <button id="start-barcode-button" class="action-button">Iniciar Escáner</button>
+            <button id="stop-barcode-button" class="action-button" disabled>Detener Escáner</button>
+            <div id="barcode-result" class="result">
+                El código escaneado aparecerá aquí
+            </div>
+            
+            <div class="history">
+                <h2>Historial de escaneos</h2>
+                <div class="history-items" id="barcode-history">
+                    <div class="history-item">Aún no hay códigos escaneados</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="ble-section" class="section">
+            <div class="status" id="ble-status">Bluetooth no iniciado</div>
+            <button id="start-ble-button" class="action-button">Buscar dispositivos BLE</button>
+            <button id="stop-ble-button" class="action-button" disabled>Detener búsqueda</button>
+            <div id="ble-result" class="result">
+                Los dispositivos BLE encontrados aparecerán aquí
+            </div>
+            
+            <div class="devices-list" id="ble-devices-list">
+                <h2>Dispositivos encontrados</h2>
+                <div class="device-list-container">
+                    <div class="device-item">No se han encontrado dispositivos</div>
+                </div>
             </div>
         </div>
     </div>
