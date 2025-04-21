@@ -1,5 +1,7 @@
 // JavaScript para la aplicación de escáner multifunción
 document.addEventListener('DOMContentLoaded', function () {
+    console.log("DOM cargado - Inicializando aplicación");
+    
     // --------- VARIABLES Y ELEMENTOS DOM ---------
     // Elementos para las pestañas
     const barcodeTab = document.getElementById('barcode-tab');
@@ -18,8 +20,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const startBleButton = document.getElementById('start-ble-button');
     const stopBleButton = document.getElementById('stop-ble-button');
     const bleResultDiv = document.getElementById('ble-result');
-    const bleDevicesList = document.getElementById('ble-devices-list');
+    const bleDevicesList = document.querySelector('#ble-devices-list .device-list-container');
     const bleStatusDiv = document.getElementById('ble-status');
+    
+    // Verificar que todos los elementos existen
+    console.log("Botón inicio barcode:", startBarcodeButton);
+    console.log("Botón inicio BLE:", startBleButton);
     
     // Variables de estado
     let scannerIsRunning = false;
@@ -340,6 +346,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateBleDevicesList() {
         const deviceListContainer = document.querySelector('#ble-devices-list .device-list-container');
         
+        if (!deviceListContainer) {
+            console.error("No se pudo encontrar el contenedor de la lista de dispositivos BLE");
+            return;
+        }
+        
         // Limpiar lista actual
         deviceListContainer.innerHTML = '';
         
@@ -376,12 +387,51 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // --------- EVENT LISTENERS ---------
     // Event listeners para los botones de código de barras
-    startBarcodeButton.addEventListener('click', startBarcodeScanner);
-    stopBarcodeButton.addEventListener('click', stopBarcodeScanner);
+    if (startBarcodeButton) {
+        console.log("Añadiendo event listener al botón de inicio de barcode");
+        startBarcodeButton.addEventListener('click', function() {
+            console.log("Botón de inicio de barcode pulsado");
+            startBarcodeScanner();
+        });
+    }
+    
+    if (stopBarcodeButton) {
+        stopBarcodeButton.addEventListener('click', function() {
+            console.log("Botón de detención de barcode pulsado");
+            stopBarcodeScanner();
+        });
+    }
     
     // Event listeners para los botones BLE
-    startBleButton.addEventListener('click', startBleScan);
-    stopBleButton.addEventListener('click', stopBleScan);
+    if (startBleButton) {
+        console.log("Añadiendo event listener al botón de inicio de BLE");
+        startBleButton.addEventListener('click', function() {
+            console.log("Botón de inicio de BLE pulsado");
+            startBleScan();
+        });
+    }
+    
+    if (stopBleButton) {
+        stopBleButton.addEventListener('click', function() {
+            console.log("Botón de detención de BLE pulsado");
+            stopBleScan();
+        });
+    }
+    
+    // Event listeners para las pestañas
+    if (barcodeTab) {
+        barcodeTab.addEventListener('click', function() {
+            console.log("Pestaña de barcode pulsada");
+            showTab('barcode');
+        });
+    }
+    
+    if (bleTab) {
+        bleTab.addEventListener('click', function() {
+            console.log("Pestaña de BLE pulsada");
+            showTab('ble');
+        });
+    }
     
     // Detectar cuando la página se cierra o se cambia para detener los procesos
     window.addEventListener('beforeunload', function() {
