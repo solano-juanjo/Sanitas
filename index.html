@@ -3,69 +3,749 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner Multifunción</title>
+    <title>Escáner Integrado para ThingsBoard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos CSS */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #555;
+            margin: 15px 0 10px;
+            font-size: 18px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        /* Estilos para el escáner de códigos de barras */
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+        }
+        
+        #scanner-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #scanner-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Estilos para botones */
+        .action-button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .action-button:hover {
+            background-color: #45a049;
+        }
+        
+        .action-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .action-button.secondary {
+            background-color: #2196F3;
+        }
+        
+        .action-button.secondary:hover {
+            background-color: #0b7dda;
+        }
+        
+        .action-button.warning {
+            background-color: #f44336;
+        }
+        
+        .action-button.warning:hover {
+            background-color: #d32f2f;
+        }
+        
+        /* Estilos para resultados */
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 5px;
+            font-size: 16px;
+            word-break: break-all;
+        }
+        
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-style: italic;
+            color: #666;
+        }
+        
+        /* Estilos dispositivos BLE */
+        .device-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .device-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .device-item:last-child {
+            border-bottom: none;
+        }
+        
+        .device-item:hover {
+            background-color: #e6f2ff;
+        }
+        
+        .device-item.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .device-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .device-id {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .device-rssi {
+            float: right;
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .summary-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .summary-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .summary-item {
+            margin-bottom: 8px;
+        }
+        
+        .summary-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 120px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Escáner Multifunción</h1>
+    <h1>Escáner Integrado para ThingsBoard</h1>
     <div class="container">
-        <div class="tabs">
-            <button id="barcode-tab" class="tab-button active">Códigos de barras</button>
-            <button id="ble-tab" class="tab-button">Dispositivos BLE</button>
-        </div>
-        
-        <div id="barcode-section" class="section active">
+        <!-- Sección de escaneo de código de barras -->
+        <div class="section barcode-section">
+            <h2>Escaneo de Código de Barras</h2>
             <div id="scanner-container">
                 <!-- La cámara aparecerá aquí -->
             </div>
-            <div class="status" id="barcode-status">Esperando acceso a la cámara...</div>
+            <div class="status" id="barcode-status">Esperando iniciar el escáner...</div>
             <button id="start-barcode-button" class="action-button">Iniciar Escáner</button>
             <button id="stop-barcode-button" class="action-button" disabled>Detener Escáner</button>
             <div id="barcode-result" class="result">
-                El código escaneado aparecerá aquí
-            </div>
-            
-            <div class="history">
-                <h2>Historial de escaneos</h2>
-                <div class="history-items" id="barcode-history">
-                    <div class="history-item">Aún no hay códigos escaneados</div>
-                </div>
+                <div class="result-title">Resultado:</div>
+                <div id="barcode-value">Ningún código escaneado</div>
             </div>
         </div>
         
-        <div id="ble-section" class="section">
+        <!-- Sección de búsqueda de dispositivos BLE -->
+        <div class="section ble-section">
+            <h2>Búsqueda de Dispositivos Bluetooth (BLE)</h2>
             <div class="status" id="ble-status">Bluetooth no iniciado</div>
-            <button id="start-ble-button" class="action-button">Buscar dispositivos BLE</button>
-            <button id="stop-ble-button" class="action-button" disabled>Detener búsqueda</button>
+            <button id="start-ble-button" class="action-button">Buscar Dispositivos BLE</button>
             <div id="ble-result" class="result">
-                Los dispositivos BLE encontrados aparecerán aquí
+                <div class="result-title">Dispositivos encontrados:</div>
+                <div id="ble-devices-count">0 dispositivos</div>
             </div>
-            
-            <div class="devices-list" id="ble-devices-list">
-                <h2>Dispositivos encontrados</h2>
-                <div class="device-list-container">
-                    <div class="device-item">No se han encontrado dispositivos</div>
-                </div>
+            <div id="device-list" class="device-list">
+                <div class="device-item">No se han encontrado dispositivos</div>
             </div>
+        </div>
+        
+        <!-- Sección de resumen y envío -->
+        <div class="section summary-section" id="summary-section">
+            <div class="summary-title">Resumen de Datos para Enviar</div>
+            <div class="summary-item">
+                <span class="summary-label">Código de barras:</span>
+                <span id="summary-barcode">No escaneado</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Dispositivo BLE:</span>
+                <span id="summary-ble-device">No seleccionado</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">MAC/ID:</span>
+                <span id="summary-ble-id">-</span>
+            </div>
+            <button id="send-data-button" class="action-button" disabled>Enviar Datos a ThingsBoard</button>
         </div>
     </div>
 
-    <script src="script.js"></script>
-    
-    <!-- Script para comprobar que los eventos funcionan -->
     <script>
-        window.addEventListener('load', function() {
-            console.log('Página completamente cargada');
+        // JavaScript para integración de escáner y BLE con ThingsBoard
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("Aplicación inicializada");
             
-            // Comprobar si los botones existen
-            console.log('Botón de códigos de barras existe:', !!document.getElementById('start-barcode-button'));
-            console.log('Botón de BLE existe:', !!document.getElementById('start-ble-button'));
+            // Variables y elementos DOM
+            // Elementos para el escáner de códigos de barras
+            const startBarcodeButton = document.getElementById('start-barcode-button');
+            const stopBarcodeButton = document.getElementById('stop-barcode-button');
+            const barcodeResultDiv = document.getElementById('barcode-value');
+            const barcodeStatusDiv = document.getElementById('barcode-status');
             
-            // Añadir un event listener de prueba
-            document.getElementById('start-barcode-button').onclick = function() {
-                console.log('Clic directo en botón de códigos de barras');
-            };
+            // Elementos para BLE
+            const startBleButton = document.getElementById('start-ble-button');
+            const bleResultDiv = document.getElementById('ble-devices-count');
+            const bleDevicesList = document.getElementById('device-list');
+            const bleStatusDiv = document.getElementById('ble-status');
+            
+            // Elementos para el resumen
+            const summaryBarcodeSpan = document.getElementById('summary-barcode');
+            const summaryBleDeviceSpan = document.getElementById('summary-ble-device');
+            const summaryBleIdSpan = document.getElementById('summary-ble-id');
+            const sendDataButton = document.getElementById('send-data-button');
+            
+            // Variables de estado
+            let scannerIsRunning = false;
+            let currentBarcode = null;
+            let selectedBleDevice = null;
+            let bleDevices = [];
+            
+            // Variables para ThingsBoard
+            let thingsBoardToken = null;
+            
+            // Intentar recuperar token de ThingsBoard
+            function getThingsBoardToken() {
+                // Intentar obtener de localStorage (si fue guardado previamente)
+                const savedToken = localStorage.getItem('thingsboard_token');
+                if (savedToken) {
+                    thingsBoardToken = savedToken;
+                    console.log("Token recuperado del localStorage");
+                    return;
+                }
+                
+                // Intentar obtener de la URL (si fue pasado como parámetro)
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenParam = urlParams.get('token');
+                if (tokenParam) {
+                    thingsBoardToken = tokenParam;
+                    // Guardar para futuros usos
+                    localStorage.setItem('thingsboard_token', tokenParam);
+                    console.log("Token recuperado de parámetros URL");
+                    return;
+                }
+                
+                console.log("No se pudo recuperar token de ThingsBoard");
+            }
+            
+            // Función para actualizar el resumen y habilitar/deshabilitar el botón de envío
+            function updateSummary() {
+                // Actualizar campos de resumen
+                summaryBarcodeSpan.textContent = currentBarcode || "No escaneado";
+                
+                if (selectedBleDevice) {
+                    summaryBleDeviceSpan.textContent = selectedBleDevice.name || "Dispositivo sin nombre";
+                    summaryBleIdSpan.textContent = selectedBleDevice.id || "-";
+                } else {
+                    summaryBleDeviceSpan.textContent = "No seleccionado";
+                    summaryBleIdSpan.textContent = "-";
+                }
+                
+                // Habilitar botón de envío solo si tenemos ambos datos
+                sendDataButton.disabled = !(currentBarcode && selectedBleDevice);
+            }
+            
+            // --------- ESCÁNER DE CÓDIGOS DE BARRAS ---------
+            // Verificar soporte de navegador para acceso a la cámara
+            function checkCameraSupport() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    return true;
+                } else if (navigator.getUserMedia || navigator.webkitGetUserMedia || 
+                           navigator.mozGetUserMedia || navigator.msGetUserMedia) {
+                    return true;
+                }
+                return false;
+            }
+            
+            // Polyfill para navegadores antiguos
+            function setupUserMediaPolyfill() {
+                navigator.getUserMedia = navigator.getUserMedia ||
+                                        navigator.webkitGetUserMedia ||
+                                        navigator.mozGetUserMedia ||
+                                        navigator.msGetUserMedia;
+                
+                if (!navigator.mediaDevices) {
+                    navigator.mediaDevices = {};
+                }
+                
+                if (!navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia = function(constraints) {
+                        var getUserMedia = navigator.getUserMedia;
+                        
+                        if (!getUserMedia) {
+                            return Promise.reject(new Error('getUserMedia no está implementado en este navegador'));
+                        }
+                        
+                        return new Promise(function(resolve, reject) {
+                            getUserMedia.call(navigator, constraints, resolve, reject);
+                        });
+                    };
+                }
+            }
+            
+            // Función para iniciar el escáner
+            function startBarcodeScanner() {
+                console.log("Iniciando escáner de códigos de barras");
+                
+                // Verificar compatibilidad primero
+                if (!checkCameraSupport()) {
+                    barcodeStatusDiv.textContent = "Error: Tu navegador no soporta acceso a la cámara";
+                    return;
+                }
+                
+                // Configurar polyfill para navegadores antiguos
+                setupUserMediaPolyfill();
+                
+                barcodeStatusDiv.textContent = "Solicitando acceso a la cámara...";
+                
+                // Solicitar permisos de la cámara explícitamente primero
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                    .then(function(stream) {
+                        // Liberar el stream inmediatamente, Quagga lo solicitará de nuevo
+                        const tracks = stream.getTracks();
+                        tracks.forEach(track => track.stop());
+                        
+                        // Ahora que tenemos los permisos, iniciar Quagga
+                        initQuagga();
+                    })
+                    .catch(function(err) {
+                        console.error("Error al solicitar permisos de cámara:", err);
+                        barcodeStatusDiv.textContent = `Error de permisos: ${err.message || "No se pudo acceder a la cámara"}`;
+                    });
+            }
+            
+            // Función para iniciar Quagga después de obtener permisos
+            function initQuagga() {
+                try {
+                    Quagga.init({
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: document.querySelector('#scanner-container'),
+                            constraints: {
+                                width: { min: 640 },
+                                height: { min: 480 },
+                                aspectRatio: { min: 1, max: 2 },
+                                facingMode: "environment" // Usar cámara trasera
+                            },
+                        },
+                        locator: {
+                            patchSize: "medium",
+                            halfSample: true
+                        },
+                        numOfWorkers: 2,
+                        frequency: 10,
+                        decoder: {
+                            readers: [
+                                "code_128_reader",
+                                "ean_reader",
+                                "ean_8_reader",
+                                "code_39_reader",
+                                "code_39_vin_reader",
+                                "codabar_reader",
+                                "upc_reader",
+                                "upc_e_reader",
+                                "i2of5_reader"
+                            ],
+                        },
+                    }, function (err) {
+                        if (err) {
+                            console.error("Error de inicialización de Quagga:", err);
+                            barcodeStatusDiv.textContent = `Error al iniciar la cámara: ${err}`;
+                            return;
+                        }
+                        
+                        barcodeStatusDiv.textContent = "Cámara activada. Apunta al código de barras.";
+                        scannerIsRunning = true;
+                        Quagga.start();
+                        
+                        // Actualizar botones
+                        startBarcodeButton.disabled = true;
+                        stopBarcodeButton.disabled = false;
+                    });
+                    
+                    // Procesar cuando se detecta un código de barras
+                    Quagga.onDetected(function (result) {
+                        if (result && result.codeResult && result.codeResult.code) {
+                            const code = result.codeResult.code;
+                            barcodeResultDiv.textContent = code;
+                            
+                            // Guardar el código escaneado
+                            currentBarcode = code;
+                            
+                            // Actualizar el resumen
+                            updateSummary();
+                            
+                            // Reproducir sonido de éxito (beep)
+                            try {
+                                playBeep();
+                            } catch (e) {
+                                console.log("No se pudo reproducir el sonido:", e);
+                            }
+                            
+                            // Opcionalmente, detener el escáner automáticamente después de obtener un código
+                            // stopBarcodeScanner();
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error("Error general al iniciar el escáner:", error);
+                    barcodeStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar el escáner"}`;
+                }
+            }
+            
+            // Función para detener el escáner
+            function stopBarcodeScanner() {
+                if (scannerIsRunning) {
+                    try {
+                        Quagga.stop();
+                        scannerIsRunning = false;
+                        barcodeStatusDiv.textContent = "Escáner detenido";
+                        
+                        // Actualizar botones
+                        startBarcodeButton.disabled = false;
+                        stopBarcodeButton.disabled = true;
+                    } catch (error) {
+                        console.error("Error al detener el escáner:", error);
+                    }
+                }
+            }
+            
+            // Función para reproducir beep
+            function playBeep() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 800;
+                    gainNode.gain.value = 0.5;
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                } catch (e) {
+                    console.log("Error al reproducir sonido:", e);
+                }
+            }
+            
+            // --------- BLUETOOTH LOW ENERGY (BLE) ---------
+            // Verificar soporte de BLE
+            function checkBleSupport() {
+                return 'bluetooth' in navigator;
+            }
+            
+            // Función para iniciar la búsqueda de dispositivos BLE
+            function startBleScan() {
+                if (!checkBleSupport()) {
+                    bleStatusDiv.textContent = "Error: Tu navegador no soporta Bluetooth Low Energy";
+                    return;
+                }
+                
+                bleStatusDiv.textContent = "Solicitando permisos de Bluetooth...";
+                bleResultDiv.textContent = "Buscando dispositivos BLE cercanos...";
+                
+                // Limpiar dispositivos anteriores
+                bleDevices = [];
+                updateBleDevicesList();
+                
+                try {
+                    navigator.bluetooth.requestDevice({
+                        // Aceptar todos los dispositivos disponibles
+                        acceptAllDevices: true,
+                        optionalServices: [] // Sin servicios específicos
+                    })
+                    .then(device => {
+                        bleStatusDiv.textContent = "Dispositivo seleccionado";
+                        
+                        // Guardar el dispositivo seleccionado
+                        const deviceInfo = {
+                            id: device.id || 'Desconocido',
+                            name: device.name || 'Dispositivo sin nombre',
+                            connected: device.gatt?.connected || false
+                        };
+                        
+                        bleDevices.push(deviceInfo);
+                        updateBleDevicesList();
+                        
+                        // Actualizar el contador de dispositivos
+                        bleResultDiv.textContent = `${bleDevices.length} dispositivo${bleDevices.length !== 1 ? 's' : ''} encontrado${bleDevices.length !== 1 ? 's' : ''}`;
+                    })
+                    .catch(error => {
+                        console.error('Error al buscar dispositivos BLE:', error);
+                        bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar la búsqueda de dispositivos Bluetooth"}`;
+                    });
+                    
+                } catch (error) {
+                    console.error("Error general con Bluetooth:", error);
+                    bleStatusDiv.textContent = `Error: ${error.message || "No se pudo iniciar Bluetooth"}`;
+                }
+            }
+            
+            // Función para seleccionar un dispositivo BLE
+            function selectBleDevice(index) {
+                // Deseleccionar todos los dispositivos visualmente
+                const deviceItems = document.querySelectorAll('.device-item');
+                deviceItems.forEach(item => item.classList.remove('selected'));
+                
+                if (index >= 0 && index < bleDevices.length) {
+                    // Seleccionar el dispositivo
+                    selectedBleDevice = bleDevices[index];
+                    
+                    // Marcar visualmente el dispositivo seleccionado
+                    deviceItems[index].classList.add('selected');
+                    
+                    // Actualizar resumen
+                    updateSummary();
+                }
+            }
+            
+            // Función para actualizar la lista de dispositivos BLE
+            function updateBleDevicesList() {
+                // Limpiar lista actual
+                bleDevicesList.innerHTML = '';
+                
+                // Si no hay dispositivos, mostrar mensaje
+                if (bleDevices.length === 0) {
+                    bleDevicesList.innerHTML = '<div class="device-item">No se han encontrado dispositivos</div>';
+                    return;
+                }
+                
+                // Agregar cada dispositivo a la lista
+                bleDevices.forEach(function(device, index) {
+                    const deviceItem = document.createElement('div');
+                    deviceItem.className = 'device-item';
+                    
+                    const deviceName = document.createElement('div');
+                    deviceName.className = 'device-name';
+                    deviceName.textContent = device.name || 'Dispositivo sin nombre';
+                    
+                    const deviceId = document.createElement('div');
+                    deviceId.className = 'device-id';
+                    deviceId.textContent = `ID: ${device.id || 'Desconocido'}`;
+                    
+                    deviceItem.appendChild(deviceName);
+                    deviceItem.appendChild(deviceId);
+                    
+                    // Agregar evento para seleccionar dispositivo
+                    deviceItem.addEventListener('click', function() {
+                        selectBleDevice(index);
+                    });
+                    
+                    bleDevicesList.appendChild(deviceItem);
+                });
+            }
+            
+            // --------- ENVÍO A THINGSBOARD ---------
+            // Función para enviar datos a ThingsBoard
+            function sendDataToThingsBoard() {
+                if (!currentBarcode || !selectedBleDevice) {
+                    alert("Debes escanear un código de barras y seleccionar un dispositivo BLE primero");
+                    return;
+                }
+                
+                sendDataButton.disabled = true;
+                sendDataButton.textContent = "Enviando...";
+                
+                // Preparar datos para enviar
+                const data = {
+                    barcode: currentBarcode,
+                    bleDevice: {
+                        id: selectedBleDevice.id,
+                        name: selectedBleDevice.name
+                    },
+                    timestamp: new Date().getTime()
+                };
+                
+                console.log("Preparando envío de datos:", data);
+                
+                // URL del servidor ThingsBoard (ajustar según sea necesario)
+                const thingsBoardUrl = "https://demo.thingsboard.io/api/v1/";
+                
+                // Si tenemos un token, lo usamos
+                if (thingsBoardToken) {
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'X-Authorization': `Bearer ${thingsBoardToken}`
+                    };
+                    
+                    // Ejemplo de envío (ajustar según la API específica de ThingsBoard)
+                    fetch(`${thingsBoardUrl}${thingsBoardToken}/telemetry`, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error HTTP: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(response => {
+                        console.log("Datos enviados correctamente:", response);
+                        sendDataButton.textContent = "Datos Enviados Correctamente";
+                        
+                        // Resetear después de 3 segundos
+                        setTimeout(() => {
+                            sendDataButton.textContent = "Enviar Datos a ThingsBoard";
+                            sendDataButton.disabled = false;
+                        }, 3000);
+                    })
+                    .catch(error => {
+                        console.error("Error al enviar datos:", error);
+                        sendDataButton.textContent = "Error al Enviar";
+                        
+                        // Resetear después de 3 segundos
+                        setTimeout(() => {
+                            sendDataButton.textContent = "Enviar Datos a ThingsBoard";
+                            sendDataButton.disabled = false;
+                        }, 3000);
+                    });
+                } else {
+                    // Si no tenemos token, mostramos la información que se enviaría
+                    console.log("No hay token de ThingsBoard. Estos son los datos que se enviarían:", data);
+                    alert("No se ha detectado un token de ThingsBoard. En un entorno real, estos datos se enviarían a ThingsBoard.");
+                    
+                    sendDataButton.textContent = "Datos Procesados";
+                    
+                    // Resetear después de 3 segundos
+                    setTimeout(() => {
+                        sendDataButton.textContent = "Enviar Datos a ThingsBoard";
+                        sendDataButton.disabled = false;
+                    }, 3000);
+                }
+            }
+            
+            // --------- EVENT LISTENERS ---------
+            // Event listeners para los botones de código de barras
+            if (startBarcodeButton) {
+                startBarcodeButton.addEventListener('click', startBarcodeScanner);
+            }
+            
+            if (stopBarcodeButton) {
+                stopBarcodeButton.addEventListener('click', stopBarcodeScanner);
+            }
+            
+            // Event listener para el botón BLE
+            if (startBleButton) {
+                startBleButton.addEventListener('click', startBleScan);
+            }
+            
+            // Event listener para el botón de envío a ThingsBoard
+            if (sendDataButton) {
+                sendDataButton.addEventListener('click', sendDataToThingsBoard);
+            }
+            
+            // Detectar cuando la página se cierra o se cambia para detener los procesos
+            window.addEventListener('beforeunload', function() {
+                if (scannerIsRunning) {
+                    stopBarcodeScanner();
+                }
+            });
+            
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && scannerIsRunning) {
+                    stopBarcodeScanner();
+                }
+            });
+            
+            // Intentar obtener el token de ThingsBoard al inicio
+            getThingsBoardToken();
         });
     </script>
 </body>
