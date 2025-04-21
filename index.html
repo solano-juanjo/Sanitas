@@ -52,5 +52,21 @@
     </div>
 
     <script src="script.js"></script>
+    
+    <!-- Script para comprobar que los eventos funcionan -->
+    <script>
+        window.addEventListener('load', function() {
+            console.log('Página completamente cargada');
+            
+            // Comprobar si los botones existen
+            console.log('Botón de códigos de barras existe:', !!document.getElementById('start-barcode-button'));
+            console.log('Botón de BLE existe:', !!document.getElementById('start-ble-button'));
+            
+            // Añadir un event listener de prueba
+            document.getElementById('start-barcode-button').onclick = function() {
+                console.log('Clic directo en botón de códigos de barras');
+            };
+        });
+    </script>
 </body>
 </html>
