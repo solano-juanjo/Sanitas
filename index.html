@@ -234,7 +234,7 @@
         <div class="section ble-section">
             <h2>Búsqueda de Dispositivos Bluetooth (BLE)</h2>
             <div class="status" id="ble-status">Bluetooth no iniciado</div>
-            <button id="start-ble-button" class="action-button">Buscar Dispositivos BLE</button>
+            <button id="start-ble-button" class="action-button">Detectar Dispositivos BLE</button>
             <div id="ble-result" class="result">
                 <div class="result-title">Dispositivos encontrados:</div>
                 <div id="ble-devices-count">0 dispositivos</div>
@@ -256,7 +256,7 @@
                 <span id="summary-ble-device">No seleccionado</span>
             </div>
             <div class="summary-item">
-                <span class="summary-label">MAC/ID:</span>
+                <span class="summary-label">MAC del dispositivo:</span>
                 <span id="summary-ble-id">-</span>
             </div>
             <button id="send-data-button" class="action-button" disabled>Enviar Datos a ThingsBoard</button>
@@ -548,16 +548,14 @@
                     navigator.bluetooth.requestDevice({
                         // Aceptar todos los dispositivos disponibles
                         acceptAllDevices: true,
-                        optionalServices: [] // Sin servicios específicos
                     })
                     .then(device => {
-                        bleStatusDiv.textContent = "Dispositivo seleccionado";
+                        bleStatusDiv.textContent = "Dispositivo detectado";
                         
-                        // Guardar el dispositivo seleccionado
+                        // Guardar la información del dispositivo sin emparejar
                         const deviceInfo = {
-                            id: device.id || 'Desconocido',
-                            name: device.name || 'Dispositivo sin nombre',
-                            connected: device.gatt?.connected || false
+                            id: device.id || 'Desconocido', // Esto contiene la MAC o un identificador único
+                            name: device.name || 'Dispositivo sin nombre'
                         };
                         
                         bleDevices.push(deviceInfo);
@@ -617,7 +615,7 @@
                     
                     const deviceId = document.createElement('div');
                     deviceId.className = 'device-id';
-                    deviceId.textContent = `ID: ${device.id || 'Desconocido'}`;
+                    deviceId.textContent = `MAC/ID: ${device.id || 'Desconocido'}`;
                     
                     deviceItem.appendChild(deviceName);
                     deviceItem.appendChild(deviceId);
@@ -646,7 +644,7 @@
                 const data = {
                     barcode: currentBarcode,
                     bleDevice: {
-                        id: selectedBleDevice.id,
+                        mac: selectedBleDevice.id,
                         name: selectedBleDevice.name
                     },
                     timestamp: new Date().getTime()
